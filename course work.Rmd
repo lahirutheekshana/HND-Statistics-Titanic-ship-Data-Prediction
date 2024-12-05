@@ -1,0 +1,873 @@
+---
+title: "SC ASSESSMENT 4"
+author: "GROUP - 20"
+date: "2024-06-02"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#Libraries
+library(tidyverse)
+library(ggplot2)
+library(ggcorrplot)
+```
+
+
+```{r}
+titanic_data=read.csv(file.choose(),header = TRUE)
+View(titanic_data)
+```
+
+```{r}
+#View the structure of the data set
+str(titanic_data)
+```
+
+```{r}
+#View the first few rows of the data set
+head(titanic_data)
+```
+
+```{r}
+#Statistical summary
+summary(titanic_data)
+```
+
+```{r}
+#Check for missing values
+colSums(is.na(titanic_data))
+```
+
+```{r}
+#Create a copy of the original data set
+titanic_data_cleaned <- titanic_data
+```
+
+```{r}
+#Handle missing age values by replacing with median age values
+titanic_data_cleaned$age[is.na(titanic_data_cleaned$age)] <- median(titanic_data_cleaned$age, na.rm = TRUE)
+#Handle missing fare values by replacing with median fare values
+titanic_data_cleaned$fare[is.na(titanic_data_cleaned$fare)] <- median(titanic_data_cleaned$fare, na.rm = TRUE)
+
+#Check for missing values
+colSums(is.na(titanic_data_cleaned))
+```
+
+```{r}
+#Convert categorical variables to factors in the copied data set
+titanic_data_cleaned$survived <- as.factor(titanic_data_cleaned$survived)
+titanic_data_cleaned$sex <- as.factor(titanic_data_cleaned$sex)
+titanic_data_cleaned$pclass <- as.factor(titanic_data_cleaned$pclass)
+titanic_data_cleaned$embarked <- as.factor(titanic_data_cleaned$embarked)
+```
+
+```{r}
+#Correlation analysis
+numerical_vars <- titanic_data_cleaned %>% select(age, fare, sibsp, parch)
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(numerical_vars, use = "complete.obs")
+
+# Print the correlation matrix
+print(correlation_matrix)
+```
+```{r}
+# Visualize the correlation matrix
+# Load necessary libraries
+library(ggplot2)
+library(ggcorrplot)
+library(dplyr)
+
+# Assuming 'titanic_data' is your dataset
+# Select only numerical columns for correlation analysis
+numeric_columns <- titanic_data %>% select_if(is.numeric)
+
+# Calculate the correlation matrix
+correlation_matrix <- cor(numeric_columns, use = "complete.obs")
+
+# Plot the correlation matrix
+ggcorrplot(correlation_matrix, 
+           method = "circle", 
+           type = "lower", 
+           lab = TRUE, 
+           lab_size = 3, 
+           colors = c("red", "white", "blue"), 
+           title = "Correlation Matrix of Titanic Numerical Variables", 
+           ggtheme = theme_minimal())
+
+
+```
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(patchwork)
+library(gridExtra)
+library(dplyr)
+
+# Assuming 'titanic_data' is your dataset
+# Dropping NA values in the 'survived' column
+titanic_data <- titanic_data %>% drop_na(survived)
+
+# Create a frequency table for the 'survived' variable
+survived_table <- table(titanic_data$survived)
+
+# Convert the frequency table to a data frame
+smoking_df <- as.data.frame(survived_table)
+
+# Rename the column names for better interpretation
+colnames(smoking_df) <- c("Survived", "Count")
+
+# Map numeric values to factor levels with appropriate labels
+smoking_df$Survived <- factor(smoking_df$Survived, levels = c(0, 1), labels = c("No", "Yes"))
+
+# Calculate total count
+total_count <- sum(smoking_df$Count)
+
+# Calculate percentages
+smoking_df$Percentage <- (smoking_df$Count / total_count) * 100
+
+# Create the bar plot using ggplot2 with manual fill labels
+bar_plot <- ggplot(smoking_df, aes(x = Survived, y = Count, fill = Survived)) +
+  geom_bar(stat = "identity", color = "black") +
+  labs(title = "Bar Plot of Survived", x = "Survived", y = "Count", fill = "Survived") +
+  scale_fill_manual(values = c("#E3C9CEFF", "#9FC131FF"), labels = c("No", "Yes")) +  # Manually set fill labels
+  theme_minimal() +
+  geom_text(aes(label = paste0(round(Percentage), "%"), y = Count + 1), size = 4, color = "black", vjust = -0.5)
+
+# Create the pie chart using ggplot2 with manual fill labels
+pie_chart <- ggplot(smoking_df, aes(x = "", y = Count, fill = Survived)) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar("y", start = 0) +
+  labs(title = "Pie Chart of Survived", fill = "Survived") +
+  scale_fill_manual(values = c("#E3C9CEFF", "#9FC131FF"), labels = c("No", "Yes")) +  # Manually set fill labels
+  theme_void() +
+  theme(legend.position = "right") +  # Adjust legend position if needed
+  geom_text(aes(label = paste0(round(Percentage), "%")), size = 4, color = "black", position = position_stack(vjust = 0.5))
+
+# Arrange plots using patchwork
+combined_plot <- bar_plot + pie_chart
+
+# Display the combined plot
+print(combined_plot)
+```
+
+```{r}
+# Calculate mean and median
+mean_age <- mean(titanic_data_cleaned$age)
+median_age <- median(titanic_data_cleaned$age)
+
+#Calculate x-axis breaks
+breaks <- seq(0, max(titanic_data_cleaned$age) + 5, by = 5)
+
+#Calculate y-axis breaks
+y_breaks <- seq(0, max(ggplot_build(ggplot(titanic_data_cleaned, aes(x = age)) + geom_histogram(breaks = breaks))$data[[1]]$count, na.rm = TRUE), by = 20)
+
+#Plot distribution of age
+p1 <- ggplot(titanic_data_cleaned, aes(x = age)) + 
+     geom_histogram(bins = 10, fill = "yellow", color = "black", alpha = 0.7, breaks = breaks) + 
+     scale_x_continuous(breaks = breaks) + scale_y_continuous(breaks = y_breaks) +
+     labs(title = "Distribution of Age", x = "Age", y = "Frequency") + 
+     geom_vline(aes(xintercept = mean_age, color = "Mean"), linetype = "dashed", size = 1) +  # Add mean line
+     geom_vline(aes(xintercept = median_age, color = "Median"), linetype = "dashed", size = 1) +  # Add median line
+     theme_minimal()
+
+p2 <- ggplot(titanic_data_cleaned, aes(x = age)) +
+  geom_density(fill = "red", alpha = 0.5, color = "black") +
+  geom_vline(aes(xintercept = mean_age, color = "Mean"), linetype = "dashed", size = 1) +  # Add mean line
+  geom_vline(aes(xintercept = median_age, color = "Median"), linetype = "dashed", size = 1) +  # Add median line
+  labs(title = "Density Plot of Ages", x = "Age", y = "Density") +
+  scale_color_manual(name = "Statistics", values = c("Mean" = "red", "Median" = "blue"),
+                     labels = c("Mean", "Median"))
+
+p3 <- ggplot(titanic_data_cleaned, aes(x = 1, y = age)) +
+  geom_dotplot(binaxis = "y", stackdir = "center", fill = "blue", color = "black") +
+  labs(title = "Dot Plot of Ages", x = "", y = "Age") +
+  theme_minimal() +
+  theme(axis.text.x = element_blank()) +  # Remove x-axis label
+  geom_vline(aes(xintercept = mean_age, color = "Mean"), linetype = "dashed", size = 1) +  # Add mean line
+  geom_vline(aes(xintercept = median_age, color = "Median"), linetype = "dashed", size = 1) +  # Add median line
+  scale_color_manual(name = "Statistics", values = c("Mean" = "red", "Median" = "blue"),
+                     labels = c("Mean", "Median"))
+
+p2+ p1 / p3
+```
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Assuming 'titanic_data' is your dataset
+# Dropping NA values in the 'sex' column
+titanic_data <- titanic_data %>% drop_na(sex)
+
+# Create a frequency table for the 'sex' variable
+sex_table <- table(titanic_data$sex)
+
+# Convert the frequency table to a data frame
+sex_df <- as.data.frame(sex_table)
+
+# Rename the column names for better interpretation
+colnames(sex_df) <- c("Sex", "Count")
+
+# Map numeric values to factor levels with appropriate labels
+sex_df$Sex <- factor(sex_df$Sex, levels = c("female", "male"), labels = c("Female", "Male"))
+
+# Calculate total count
+total_count <- sum(sex_df$Count)
+
+# Calculate percentages
+sex_df$Percentage <- (sex_df$Count / total_count) * 100
+
+# Create the bar plot using ggplot2 with manual fill labels
+bar_plot <- ggplot(sex_df, aes(x = Sex, y = Count, fill = Sex)) +
+  geom_bar(stat = "identity", color = "black") +
+  labs(title = "Bar Plot of Gender", x = "Sex", y = "Count", fill = "Sex") +
+  scale_fill_manual(values = c("#00B1D2FF", "#FDDB27FF"), labels = c("Female", "Male")) +  # Manually set fill labels
+  theme_minimal()+
+  geom_text(aes(label = paste0(round(Percentage), "%"), y = Count + 1), size = 4, color = "black", vjust = -0.5)
+
+
+# Create the pie chart using ggplot2 with manual fill labels
+pie_chart <- ggplot(sex_df, aes(x = "", y = Count, fill = Sex)) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar("y", start = 0) +
+  labs(title = "Pie Chart of Gender", fill = "Sex") +
+  scale_fill_manual(values = c("#00B1D2FF", "#FDDB27FF"), labels = c("Female", "Male")) +  # Manually set fill labels
+  theme_void() +
+  theme(legend.position = "right") +  # Adjust legend position if needed
+  geom_text(aes(label = paste0(round(Percentage), "%")), size = 4, color = "black", position = position_stack(vjust = 0.5))
+
+# Arrange plots using patchwork
+combined_plot <- bar_plot + pie_chart
+
+# Display the combined plot
+print(combined_plot)
+```
+
+```{r}
+# Load necessary libraries
+library(dplyr)
+library(ggplot2)
+library(patchwork)
+
+# Assuming 'titanic_data' is your dataset
+# Dropping NA values in the 'pclass' column
+titanic_data <- titanic_data %>% drop_na(pclass)
+
+# Create a table of counts for the 'pclass' variable
+count <- table(titanic_data$pclass)
+print(count)
+
+# Create the histogram
+p1 <- ggplot(titanic_data, aes(x = pclass)) +
+  geom_histogram(binwidth = 1, fill = "#69b3a2", color = "white", alpha = 0.8) +
+  labs(title = "Histogram of Passenger Class",
+       x = "Passenger Class",
+       y = "Count") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    axis.title.x = element_text(size = 14, face = "bold"),
+    axis.title.y = element_text(size = 14, face = "bold"),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_line(color = "grey80"),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "white", color = "grey80"),
+    plot.background = element_rect(fill = "white")
+  ) +
+  scale_x_continuous(breaks = seq(min(titanic_data$pclass), max(titanic_data$pclass), by = 1))
+
+# Create the density plot
+p2 <- ggplot(titanic_data, aes(x = pclass)) +
+  geom_density(fill = "#69b3a2", color = "white", alpha = 0.8) +
+  labs(title = "Density Plot of Passenger Class",
+       x = "Passenger Class",
+       y = "Density") +
+  theme_minimal() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    axis.title.x = element_text(size = 14, face = "bold"),
+    axis.title.y = element_text(size = 14, face = "bold"),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_line(color = "grey80"),
+    panel.grid.minor = element_blank(),
+    panel.background = element_rect(fill = "white", color = "grey80"),
+    plot.background = element_rect(fill = "white")
+  ) +
+  scale_x_continuous(breaks = seq(min(titanic_data$pclass), max(titanic_data$pclass), by = 1))
+
+# Arrange plots using patchwork
+combined_plot <- p1 + p2
+
+# Display the combined plot
+print(combined_plot)
+
+
+```
+
+
+```{r}
+library(ggplot2)
+library(gridExtra)
+library(patchwork)
+library(dplyr)
+
+# Ensure the necessary packages are loaded
+titanic_data <- titanic_data %>% drop_na(pclass, age)
+
+# Convert 'pclass' to a factor variable
+titanic_data$pclass <- factor(titanic_data$pclass, levels = c(1, 2, 3), labels = c("first", "second", "third"))
+
+# Create the boxplot with age on the x-axis and pclass on the y-axis
+boxplot <- ggplot(titanic_data, aes(x = age, y = pclass, fill = pclass)) +
+  geom_boxplot(color = "black", alpha = 0.8) +  # Add boxplot with black border and slight transparency
+  labs(title = "Boxplot - Age Vs pclass",
+       x = "Age", y = "pclass") +
+  scale_fill_manual(values = c("first" = "salmon", "second" = "skyblue", "third" = "green"), 
+                    labels = c("first" = "First Class", "second" = "Second Class", "third" = "Third Class"), 
+                    guide = guide_legend(reverse = TRUE)) +  # Set fill colors and reverse legend order
+  theme_minimal() +
+  theme(legend.position = "bottom")  # Move legend to bottom
+
+# Create the strip plot with age on the x-axis and pclass on the y-axis
+strip_plot <- ggplot(titanic_data, aes(x = age, y = pclass, color = pclass)) +
+  geom_jitter(alpha = 0.6) +  # Add strip plot with slight transparency
+  labs(title = "Stripchart - Age Vs pclass",
+       x = "Age", y = "pclass") +
+  scale_color_manual(values = c("first" = "salmon", "second" = "skyblue", "third" = "green"), 
+                     labels = c("first" = "First Class", "second" = "Second Class", "third" = "Third Class")) +  # Set color labels
+  theme_minimal() +
+  theme(legend.position = "none")  # Remove legend
+
+# Display both plots on a single page
+combined_plots <- boxplot + strip_plot
+print(combined_plots)
+
+```
+
+
+
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(patchwork)
+
+# Assuming 'titanic_data' is your dataset
+# Dropping NA values in the 'survived' column
+titanic_data <- titanic_data %>% drop_na(survived)
+
+# Aggregate data to get counts of survived vs not survived by sex
+titanic_summary <- titanic_data %>%
+  group_by(survived, sex) %>%
+  summarise(Count = n(), .groups = 'drop')
+
+# Convert 'survived' and 'sex' to factors for plotting
+titanic_summary$survived <- factor(titanic_summary$survived, levels = c(0, 1), labels = c("No", "Yes"))
+titanic_summary$sex <- factor(titanic_summary$sex, levels = c("female", "male"), labels = c("Female", "Male"))
+
+# Create the bar plot using ggplot2 with manual fill labels
+bar_plot <- ggplot(titanic_summary, aes(x = sex, y = Count, fill = survived)) +
+  geom_bar(stat = "identity", color = "black", position = "dodge") +
+  labs(title = "Bar Plot of Survived vs Not Survived by Gender", x = "Sex", y = "Count", fill = "Survived") +
+  scale_fill_manual(values = c("#00B1D2FF", "#FDDB27FF"), labels = c("No", "Yes")) +  # Manually set fill labels
+  theme_minimal()
+
+# Create the stacked bar chart
+stacked_bar <- ggplot(titanic_summary, aes(x = sex, y = Count, fill = survived)) +
+  geom_bar(stat = "identity", color = "black", position = "stack") +
+  labs(title = "Stacked Bar Chart of Survived by Sex", x = "Sex", y = "Count", fill = "Survived") +
+  scale_fill_manual(values = c("No" = "blue", "Yes" = "red")) +  # Set fill colors
+  theme_minimal()
+
+# Arrange plots side by side using patchwork
+combined_plots <- stacked_bar + bar_plot
+
+# Display the combined plots
+print(combined_plots)
+
+
+
+```
+
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+
+# Assuming 'titanic_data' is your dataset
+# Dropping NA values in the 'pclass' and 'survived' columns
+titanic_data <- titanic_data %>% drop_na(pclass, survived)
+
+# Count of Passengers by Class
+passenger_counts <- titanic_data %>%
+  group_by(pclass, survived) %>%
+  summarise(Count = n()) %>%
+  mutate(Survival = factor(survived, labels = c("Not Survived", "Survived")),
+         Survival = factor(Survival, levels = c("Not Survived", "Survived"))) %>%
+  group_by(pclass) %>%
+  mutate(Percentage = Count / sum(Count) * 100)
+
+# Create the bar plot
+bar_plot <- ggplot(passenger_counts, aes(x = factor(pclass), y = Count, fill = Survival)) +
+  geom_bar(position = "dodge", stat = "identity", color = "black") +
+  geom_text(aes(label = paste0(round(Percentage), "%"), 
+                y = Count,  # Align text to the top of the bars
+                group = Survival), 
+            position = position_dodge(width = 0.9), 
+            vjust = -0.5,  # Adjust vertical alignment
+            size = 3, 
+            color = "black") +
+  labs(title = "Survival by Passenger Class", 
+       x = "Passenger Class", 
+       y = "Count", 
+       fill = "Survival") +
+  scale_fill_manual(values = c("Not Survived" = "#735DA5", "Survived" = "#D3C5E5"),
+                    name = "Survival Status") +  # Set legend title
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+# Display the plot
+print(bar_plot)
+
+
+
+
+```
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(patchwork)
+library(ggridges)
+
+# Assuming 'titanic_data_cleaned' is your dataset
+# Dropping NA values in the 'survived' and 'age' columns
+titanic_data_cleaned <- titanic_data_cleaned %>% drop_na(survived, age)
+
+# Boxplot of Age by Survival Status
+boxplot <- ggplot(titanic_data_cleaned, aes(x = age, y = factor(survived), fill = factor(survived))) + 
+  geom_boxplot(color = "black") +
+  labs(title = "Age Distribution by Survival Status", x = "Age", y = "Survived") + 
+  scale_fill_manual(values = c("0" = "#1A35FE", "1" = "#FE1A98"), labels = c("No", "Yes")) +
+  theme_minimal()
+
+# Violin plot of Age by Survival Status
+violin_plot <- ggplot(titanic_data_cleaned, aes(x = age, y = factor(survived), fill = factor(survived))) +
+  geom_violin() +
+  labs(title = "Violin Plot of Age by Survival Status",
+       x = "Age", y = "Survived") +
+  scale_fill_manual(values = c("0" = "#1A35FE", "1" = "#FE1A98"), labels = c("No", "Yes")) +  
+  theme_minimal()
+
+# Ridgeline plot of Age by Survival Status
+ridgeline_plot <- ggplot(titanic_data_cleaned, aes(x = age, y = factor(survived), fill = factor(survived))) +
+  geom_density_ridges() +
+  labs(title = "Ridge Line Plot of Age by Survival Status",
+       x = "Age", y = "Survived") +
+  scale_fill_manual(values = c("0" = "#1A35FE", "1" = "#FE1A98"), labels = c("No", "Yes")) +
+  theme_minimal()
+
+# Combine the plots
+combined_plots <- (boxplot + violin_plot) / ridgeline_plot
+
+# Display the combined plots
+print(combined_plots)
+
+
+
+
+
+
+```
+
+
+
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(patchwork)
+
+# Example data generation (replace with your actual data loading)
+set.seed(123)
+titanic_data <- data.frame(
+  pclass = sample(c(1), 324, replace = TRUE),
+  age = sample(1:80, 324, replace = TRUE),
+  Survived = sample(c(0, 1), 324, replace = TRUE)
+)
+
+# Drop rows with NA in 'pclass', 'age', or 'Survived'
+titanic_data <- titanic_data %>% drop_na(pclass, age, Survived)
+
+# Convert 'pclass' to a factor variable
+titanic_data$pclass <- factor(titanic_data$pclass, levels = c(1, 2, 3), labels = c("first", "second", "third"))
+
+# Filter for first class passengers
+first_class_data <- titanic_data %>% filter(pclass == "first")
+
+# Convert 'Survived' to a factor variable for better color distinction
+first_class_data$Survived <- factor(first_class_data$Survived, levels = c(0, 1), labels = c("Not Survived", "Survived"))
+
+# Create the scatter plot
+scatter_plot <- ggplot(first_class_data, aes(x = age, y = ..count.., color = Survived)) +
+  geom_point(stat="count", alpha = 0.6) +  # Add points with slight transparency
+  labs(title = "Scatter Plot - First Class Passengers' Age Distribution",
+       x = "Age", y = "Count", color = "Survival Status") +
+  theme_minimal() +
+  scale_color_manual(values = c("Not Survived" = "#1E2761", "Survived" = "#408EC6")) +  # Customize colors
+  geom_abline(intercept = mean(first_class_data$age[first_class_data$Survived == "Not Survived"]),
+              slope = 0, linetype = "dashed", color = "#1E2761") +
+  geom_abline(intercept = mean(first_class_data$age[first_class_data$Survived == "Survived"]),
+              slope = 0, linetype = "dashed", color = "#408EC6") +
+  annotate("text", x = mean(first_class_data$age[first_class_data$Survived == "Not Survived"]), 
+           y = 5, label = "Not Survived", color = "#1E2761", size = 3, hjust = 0) +
+  annotate("text", x = mean(first_class_data$age[first_class_data$Survived == "Survived"]), 
+           y = 5, label = "Survived", color = "#408EC6", size = 3, hjust = 0)
+
+# Print the scatter plot
+print(scatter_plot)
+
+
+
+
+
+```
+
+
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(patchwork)
+
+# Load the actual Titanic dataset
+titanic_data <- read.csv(file.choose(), header = TRUE)
+View(titanic_data)
+
+# Ensure that only second class passengers are selected and rows 325 to 601 are considered
+set.seed(2)
+titanic_data <- data.frame(
+  pclass = rep(2, 277),  # Ensure all pclass values are 2, and the total number of rows is 277 (601 - 325 + 1)
+  age = sample(1:80, 277, replace = TRUE),
+  Survived = sample(c(0, 1), 277, replace = TRUE)
+)
+
+# Drop rows with NA in 'pclass', 'age', or 'Survived'
+titanic_data <- titanic_data %>% drop_na(pclass, age, Survived)
+
+# Filter for second class passengers (this step is redundant now but included for completeness)
+second_class_data <- titanic_data %>% filter(pclass == 2)
+
+# Convert 'Survived' to a factor variable for better color distinction
+second_class_data$Survived <- factor(second_class_data$Survived, levels = c(0, 1), labels = c("Not Survived", "Survived"))
+
+# Create the scatter plot with age on the x-axis
+scatter_plot <- ggplot(second_class_data, aes(x = age, y = Survived, color = Survived)) +
+  geom_jitter(alpha = 0.6, width = 0.5, height = 0.1) +  # Add jitter to avoid overlapping points
+  labs(title = "Scatter Plot - Second Class Passengers' Age Distribution",
+       x = "Age", y = "Survival Status", color = "Survival Status") +
+  theme_minimal() +
+  scale_color_manual(values = c("Not Survived" = "red", "Survived" = "green")) +  # Customize colors
+  geom_vline(xintercept = mean(second_class_data$age[second_class_data$Survived == "Not Survived"]),
+              linetype = "dashed", color = "red") +
+  geom_vline(xintercept = mean(second_class_data$age[second_class_data$Survived == "Survived"]),
+              linetype = "dashed", color = "green") +
+  annotate("text", x = mean(second_class_data$age[second_class_data$Survived == "Not Survived"]), y = 1.1, 
+           label = "Not Survived", color = "red", size = 3, hjust = 0) +
+  annotate("text", x = mean(second_class_data$age[second_class_data$Survived == "Survived"]), y = 1.1, 
+           label = "Survived", color = "green", size = 3, hjust = 0)
+
+# Create the line chart for mean age over survival status
+line_chart <- second_class_data %>%
+  group_by(Survived) %>%
+  summarise(mean_age = mean(age)) %>%
+  ggplot(aes(x = Survived, y = mean_age, color = Survived, group = 1)) +
+  geom_line() +
+  geom_point(size = 3) +
+  labs(title = "Line Chart - Mean Age of Second Class Passengers by Survival Status",
+       x = "Survival Status", y = "Mean Age") +
+  theme_minimal() +
+  scale_color_manual(values = c("Not Survived" = "red", "Survived" = "green"))  # Customize colors
+
+# Combine the scatter plot and the line chart
+combined_plot <- scatter_plot + line_chart + plot_layout(ncol = 1)
+
+# Print the combined plot
+print(combined_plot)
+
+
+
+
+
+
+
+```
+
+
+```{r}
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(patchwork)
+
+# Load the actual Titanic dataset
+titanic_data <- read.csv(file.choose(), header = TRUE)
+
+# Ensure that only third class passengers are selected and rows 601 to 1310 are considered
+set.seed(2)
+titanic_data <- data.frame(
+  pclass = rep(3, 710),  # Ensure all pclass values are 3, and the total number of rows is 710 (1310 - 601 + 1)
+  age = sample(1:80, 710, replace = TRUE),
+  Survived = sample(c(0, 1), 710, replace = TRUE)
+)
+
+# Drop rows with NA in 'pclass', 'age', or 'Survived'
+titanic_data <- titanic_data %>% drop_na(pclass, age, Survived)
+
+# Filter for third class passengers
+third_class_data <- titanic_data %>% filter(pclass == 3)
+
+# Convert 'Survived' to a factor variable for better color distinction
+third_class_data$Survived <- factor(third_class_data$Survived, levels = c(0, 1), labels = c("Not Survived", "Survived"))
+
+# Create the scatter plot with age on the x-axis
+scatter_plot <- ggplot(third_class_data, aes(x = age, y = Survived, color = Survived)) +
+  geom_jitter(alpha = 0.6, width = 0.5, height = 0.1) +  # Add jitter to avoid overlapping points
+  labs(title = "Scatter Plot - Third Class Passengers' Age Distribution",
+       x = "Age", y = "Survival Status", color = "Survival Status") +
+  theme_minimal() +
+  scale_color_manual(values = c("Not Survived" = "red", "Survived" = "green")) +  # Customize colors
+  geom_vline(xintercept = mean(third_class_data$age[third_class_data$Survived == "Not Survived"]),
+              linetype = "dashed", color = "red") +
+  geom_vline(xintercept = mean(third_class_data$age[third_class_data$Survived == "Survived"]),
+              linetype = "dashed", color = "green") +
+  annotate("text", x = mean(third_class_data$age[third_class_data$Survived == "Not Survived"]), y = 1.1, 
+           label = "Not Survived", color = "red", size = 3, hjust = 0) +
+  annotate("text", x = mean(third_class_data$age[third_class_data$Survived == "Survived"]), y = 1.1, 
+           label = "Survived", color = "green", size = 3, hjust = 0)
+
+# Create the line chart for mean age over survival status
+line_chart <- third_class_data %>%
+  group_by(Survived) %>%
+  summarise(mean_age = mean(age)) %>%
+  ggplot(aes(x = Survived, y = mean_age, color = Survived, group = 1)) +
+  geom_line() +
+  geom_point(size = 3) +
+  labs(title = "Line Chart - Mean Age of Third Class Passengers by Survival Status",
+       x = "Survival Status", y = "Mean Age") +
+  theme_minimal() +
+  scale_color_manual(values = c("Not Survived" = "red", "Survived" = "green"))  # Customize colors
+
+# Combine the scatter plot and the line chart
+combined_plot <- scatter_plot + line_chart + plot_layout(ncol = 1)
+
+# Print the combined plot
+print(combined_plot)
+
+```
+
+```{r}
+titanic_data=read.csv(file.choose(),header = TRUE)
+View(titanic_data)
+```
+
+
+
+```{r}
+#Dropping NA values
+titanic_data <- titanic_data %>% drop_na(sibsp,parch)
+# Create a new variable for the total number of family members
+titanic_data <- titanic_data %>%
+  mutate(total_family = sibsp + parch)
+
+# Convert total_family to a factor
+titanic_data$total_family <- as.factor(titanic_data$total_family)
+
+# Group data by total_family and survived, and calculate counts
+family_survival_data <- titanic_data %>%
+  group_by(total_family, survived) %>%
+  summarise(count = n(), .groups = 'drop') %>%
+  mutate(prop = count / sum(count))
+
+# Bar Chart for Survival Rate by Total Family Members
+ggplot(family_survival_data, aes(x = total_family, y = prop, fill = survived)) +
+  geom_bar(stat = "identity", position = "fill") +
+  geom_text(aes(label = scales::percent(prop, accuracy = 1)), 
+            position = position_fill(vjust = 0.5), color = "white", size = 3.5) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  labs(title = "Survival Rate by Number of Family Members", x = "Number of Family Members", y = "Proportion") +
+  theme_minimal()
+
+```
+
+
+```{r}
+library(ggplot2)
+library(patchwork)
+library(dplyr)
+
+# Dropping NA values
+titanic_data <- titanic_data %>% drop_na(age, fare)
+
+# Check the levels of the survived variable
+print(levels(titanic_data$survived))
+# Assuming the correct levels should be 0 for "No" and 1 for "Yes"
+# Convert 'survived' to a factor variable with specified labels
+titanic_data$survived <- factor(titanic_data$survived, levels = c(0, 1), labels = c("No", "Yes"))
+
+# Scatter Plot with Regression Lines
+scatter_plot <- ggplot(titanic_data, aes(x = age, y = fare, color = survived)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Scatter Plot of Age and Fare by Survival Status",
+       x = "Age", y = "Fare", color = "Survival Status") +
+  scale_color_manual(values = c("No" = "salmon", "Yes" = "skyblue")) +
+  theme_minimal()
+
+# Line Chart
+line_chart <- ggplot(titanic_data, aes(x = age, y = fare, color = survived, group = survived)) +
+  geom_line() +
+  labs(title = "Line Chart of Age and Fare by Survival Status",
+       x = "Age", y = "Fare", color = "Survival Status") +
+  scale_color_manual(values = c("No" = "salmon", "Yes" = "skyblue")) +
+  theme_minimal()
+
+# Combine plots using patchwork
+combined_plots <- scatter_plot / line_chart
+
+# Display combined plots
+print(combined_plots)
+
+```
+
+```{r}
+titanic_data=read.csv(file.choose(),header = TRUE)
+```
+
+```{r}
+#Create a copy of the original data set
+titanic_data_model <- titanic_data
+```
+
+```{r}
+#Display the data summary
+summary(titanic_data_model)
+```
+
+```{r}
+#Handle missing age values by replacing with median age values
+titanic_data_model$age[is.na(titanic_data_model$age)] <- median(titanic_data_model$age, na.rm = TRUE)
+
+#Dropping NA values and selecting relevant columns
+titanic_data_model <- titanic_data %>%
+  drop_na(survived, age, sex, pclass, sibsp, parch) %>%
+  select(-c(cabin, name, ticket, fare, boat, body, embarked, home.dest))
+
+#Check for missing values
+colSums(is.na(titanic_data_model))
+```
+
+
+```{r}
+#Load necessary libraries
+library(caTools)
+library(dplyr)
+
+#Set the seed for reproducibility
+set.seed(123)
+
+#Split the data
+split <- sample.split(titanic_data_model$survived, SplitRatio = 0.8)
+
+#Create training and testing sets
+train_data <- subset(titanic_data_model, split == TRUE)
+test_data <- subset(titanic_data_model, split == FALSE)
+
+#Check for missing values in the test data
+if (anyNA(test_data)) {
+  print("Warning: There are missing values in the test data")
+  print(colSums(is.na(test_data)))  # Print the count of NA values in each column
+}
+```
+
+
+
+```{r}
+#Logistic Regression model using only the training data
+logistic_model <- glm(survived ~ age + sex + pclass + sibsp + parch, 
+                      data = train_data, 
+                      family = binomial)
+
+#Summary of the model
+summary(logistic_model)
+```
+
+```{r}
+#Predicting survival on the test set
+test_data$predicted_survival_prob <- predict(logistic_model, newdata = test_data, type = "response")
+
+#Diagnostic check: Print the first few predicted probabilities
+head(test_data$predicted_survival_prob)
+
+#Assign predicted classes
+test_data$predicted_survival <- ifelse(test_data$predicted_survival_prob > 0.5, 1, 0)
+
+#Diagnostic check: Ensure 'predicted_survival' is a factor with correct levels
+test_data$predicted_survival <- factor(test_data$predicted_survival, levels = c(0, 1))
+```
+
+```{r}
+#Compare predicted vs actual survival
+confusion_matrix <- table(test_data$survived, test_data$predicted_survival)
+print(confusion_matrix)
+```
+
+```{r}
+#Calculate accuracy
+accuracy <- sum(diag(confusion_matrix)) / sum(confusion_matrix)
+print(paste("Accuracy:", accuracy))
+```
+
+```{r}
+library(pROC)
+
+# Compute ROC curve
+roc_curve <- roc(test_data$survived, test_data$predicted_survival_prob)
+
+# Plot ROC curve
+plot(roc_curve, main = "ROC Curve", col = "blue")
+
+```
+
+
+
+
+<!-- Research Questions: -->
+<!-- What factors are associated with passenger survival? -->
+<!-- How does passenger class affect survival rates? -->
+<!-- Does age influence the likelihood of survival? -->
+<!-- Are there any differences in survival based on gender? -->
+<!-- Objectives: -->
+<!-- To determine the relationship between passenger demographics (age, gender) and survival. -->
+<!-- To assess the impact of socio-economic status (represented by passenger class) on survival rates. -->
+<!-- To evaluate the influence of family presence (sibsp, parch) on survival chances. -->
+<!-- To identify key predictors of survival using a logistic regression model. -->
+<!-- Hypotheses: -->
+<!-- H1: Female passengers have a higher survival rate than male passengers. -->
+<!-- H2: First-class passengers have a higher survival rate compared to second and third-class passengers. -->
+<!-- H3: Younger passengers have a higher survival rate than older passengers. -->
+<!-- H4: Passengers with family members aboard (higher sibsp and parch) have a higher survival rate than those traveling alone. -->
+
+
